@@ -82,6 +82,8 @@
 
                 def builder = new groovy.json.JsonBuilder(json)
                 file.write(builder.toPrettyString())
+
+                new File(project.basedir, "target").mkdirs()
               ]]></source>
             </configuration>
           </execution>

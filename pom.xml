@@ -5,8 +5,10 @@
   <version>2.14.305.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <properties>
-    <node.version>15.14.0</node.version>
+    <!--<node.version>15.14.0</node.version>-->
+    <node.version>16.19.1</node.version>
     <npm-install-command>ci</npm-install-command>
+    <npm-install-command-args>-f</npm-install-command-args>
     <ts-build-phase>generate-resources</ts-build-phase>
     <ts-test-phase>generate-test-resources</ts-test-phase>
     <ts-link-dependency-phase>generate-sources</ts-link-dependency-phase>
@@ -14,13 +16,82 @@
     <ts-pack-phase>package</ts-pack-phase>
   </properties>
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>com.github.eirslett</groupId>
+          <artifactId>frontend-maven-plugin</artifactId>
+          <version>1.12.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.gmaven</groupId>
+          <artifactId>groovy-maven-plugin</artifactId>
+          <version>2.1.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>3.3.0</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
+      <plugin>
+        <groupId>org.codehaus.gmaven</groupId>
+        <artifactId>groovy-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>derive-npm-compatible-version</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>execute</goal>
+            </goals>
+            <configuration>
+              <source><![CDATA[
+                def version = project.version as String;
+                def suffix = "";
+                if (version.contains("-")) {
+                  suffix = version.substring(version.indexOf("-") + 1, version.length());
+                  version = version.substring(0, version.indexOf("-"));
+                }
+                
+                def versionParts = version.tokenize("\\.");
+                while (versionParts.size() < 3) { 
+                  versionParts.add("0"); 
+                }
+
+                while (versionParts.size() > 3) {
+                  suffix = versionParts[-1] + "." + suffix;
+                  versionParts.pop();
+                }
+
+                suffix = suffix.replace("-", "."); 
+                version = versionParts.join("."); 
+                if (suffix) { 
+                  version = version + "-" + suffix; 
+                }
+
+                log.info("Semver representation of project version: " + version); 
+                project.properties.semver = version;
+
+                def slurper = new groovy.json.JsonSlurper()
+                def file = new File('package.json')
+                def json = slurper.parse(file)
+
+                json.version = version
+
+                def builder = new groovy.json.JsonBuilder(json)
+                file.write(builder.toPrettyString())
+              ]]></source>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>com.github.eirslett</groupId>
         <artifactId>frontend-maven-plugin</artifactId>
-        <version>1.12.1</version>
         <configuration>
-          <workingDirectory>.</workingDirectory>
+          <workingDirectory>${project.basedir}</workingDirectory>
           <installDirectory>nodejs</installDirectory>
           <nodeVersion>v${node.version}</nodeVersion>
         </configuration>
@@ -43,13 +114,39 @@
             </configuration>
           </execution>
           <execution>
+            <id>npm install license-checker</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <phase>${ts-build-phase}</phase>
+            <configuration>
+              <arguments>install ${npm-install-command-args} --no-save license-checker</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm generate license report</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <phase>${ts-build-phase}</phase>
+            <configuration>
+              <environmentVariables>
+                <DEBUG>license-report*</DEBUG>
+              </environmentVariables>
+              <arguments>exec -- license-checker --production --out
+                ${project.build.directory}/js/META-INF/NPM-DEPENDENCIES.json --json --customPath
+                inception/build/licenseCheckerCustomFormat.json
+                --excludePrivatePackages</arguments>
+            </configuration>
+          </execution>
+          <execution>
             <id>npm install gulp-cli</id>
             <goals>
               <goal>npm</goal>
             </goals>
             <phase>${ts-build-phase}</phase>
             <configuration>
-              <arguments>install --no-save gulp-cli</arguments>
+              <arguments>install ${npm-install-command-args} --no-save gulp-cli</arguments>
             </configuration>
           </execution>
           <execution>
@@ -60,6 +157,38 @@
             <phase>${ts-build-phase}</phase>
             <configuration>
               <arguments>generic</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm pack</id>
+            <goals>
+              <goal>npm</goal>
+            </goals>
+            <phase>${ts-pack-phase}</phase>
+            <configuration>
+              <arguments>pack --pack-destination=target</arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-artifacts</id>
+            <phase>${ts-pack-phase}</phase>
+            <goals>
+              <goal>attach-artifact</goal>
+            </goals>
+            <configuration>
+              <artifacts>
+                <artifact>
+                  <file>${project.build.directory}/pdf.js-${semver}.tgz</file>
+                  <classifier>npm</classifier>
+                  <type>tgz</type>
+                </artifact>
+              </artifacts>
             </configuration>
           </execution>
         </executions>

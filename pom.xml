@@ -110,7 +110,7 @@
             </goals>
             <phase>${ts-build-phase}</phase>
             <configuration>
-              <arguments>${npm-install-command}</arguments>
+              <arguments>${npm-install-command} ${npm-install-command-args}</arguments>
             </configuration>
           </execution>
           <execution>

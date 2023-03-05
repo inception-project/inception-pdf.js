@@ -184,7 +184,7 @@
             <phase>${ts-build-phase}</phase>
             <configuration>
               <environmentVariables>
-                <PACK_FILE>${project.build.directory}/pdfjs-dist-2.14.309.tgz</PACK_FILE>
+                <PACK_FILE>${project.build.directory}/pdfjs-dist.tgz</PACK_FILE>
               </environmentVariables>
               <arguments>dist-pack</arguments>
             </configuration>

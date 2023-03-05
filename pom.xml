@@ -5,10 +5,10 @@
   <version>2.14.305.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <properties>
-    <!--<node.version>15.14.0</node.version>-->
-    <node.version>16.19.1</node.version>
+    <node.version>15.14.0</node.version>
+    <!--<node.version>16.19.1</node.version>-->
     <npm-install-command>ci</npm-install-command>
-    <npm-install-command-args>-f</npm-install-command-args>
+    <npm-install-command-args></npm-install-command-args>
     <ts-build-phase>generate-resources</ts-build-phase>
     <ts-test-phase>generate-test-resources</ts-test-phase>
     <ts-link-dependency-phase>generate-sources</ts-link-dependency-phase>
@@ -33,9 +33,34 @@
           <artifactId>build-helper-maven-plugin</artifactId>
           <version>3.3.0</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>3.1.0</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>clean-build-directory</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+            <configuration>
+              <filesets>
+                <fileset>
+                  <directory>build</directory>
+                </fileset>
+              </filesets>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.codehaus.gmaven</groupId>
         <artifactId>groovy-maven-plugin</artifactId>
@@ -158,19 +183,22 @@
             </goals>
             <phase>${ts-build-phase}</phase>
             <configuration>
-              <arguments>generic</arguments>
+              <environmentVariables>
+                <PACK_FILE>${project.build.directory}/pdfjs-dist-2.14.309.tgz</PACK_FILE>
+              </environmentVariables>
+              <arguments>dist-pack</arguments>
             </configuration>
           </execution>
-          <execution>
+          <!-- <execution>
             <id>npm pack</id>
             <goals>
               <goal>npm</goal>
             </goals>
             <phase>${ts-pack-phase}</phase>
             <configuration>
-              <arguments>pack --pack-destination=target</arguments>
+              <arguments>pack - -pack-destination=target</arguments>
             </configuration>
-          </execution>
+          </execution> -->
         </executions>
       </plugin>
       <plugin>
@@ -186,7 +214,7 @@
             <configuration>
               <artifacts>
                 <artifact>
-                  <file>${project.build.directory}/pdf.js-${semver}.tgz</file>
+                  <file>${project.build.directory}/pdfjs-dist.tgz</file>
                   <classifier>npm</classifier>
                   <type>tgz</type>
                 </artifact>

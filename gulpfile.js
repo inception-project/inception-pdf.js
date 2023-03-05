@@ -2281,6 +2281,35 @@ gulp.task(
 );
 
 gulp.task(
+  "dist-pack",
+  gulp.series("dist-pre", function createDistInstall(done) {
+    let distPath = DIST_DIR;
+    const opts = {};
+    const installPath = process.env.PDFJS_INSTALL_PATH;
+    if (installPath) {
+      opts.cwd = installPath;
+      distPath = path.relative(installPath, distPath);
+    }
+    safeSpawnSync("npm", ["pack", distPath], opts);
+
+    const packFile = process.env.PACK_FILE
+
+    // Move the packed file to the DIST_DIR
+    let files = fs.readdirSync(process.cwd());
+    for (let file of files) {
+      if (/^pdfjs-dist.*\.tgz$/.test(file)) {
+        if (!packFile) {
+          packFile = `${BUILD_DIR}/${file}`
+        }
+        fs.copyFileSync(file, packFile);
+        fs.unlinkSync(file);
+      }
+    }
+    done();
+  })
+);
+
+gulp.task(
   "dist",
   gulp.series("dist-pre", function createDist(done) {
     const VERSION = getVersionJSON().version;
